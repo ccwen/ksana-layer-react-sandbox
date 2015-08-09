@@ -664,13 +664,13 @@ module.exports=InterlineView;
 
 var underlinestyle={borderBottom:"solid 0.1em green",display:"inline"};
 //var linethroughstyle={textDecoration:"line-through"};
-var getOldTextStyle=function(markup,mid,context) {
+var getStyle=function(markup,mid,context) {
 	var style={};
 	var g=context.hoveringMarkup;
 	if (g) g=g.group;
 	if (context.hovering===mid || (g && g===markup.group)) {
 		style=context.styles[markup.className];
-	}
+}
 
 
 // else if (context.editing===mid) style=linethroughstyle;
@@ -683,7 +683,7 @@ var getHandleCaption=function(markup) {
 	return markup.caption;
 }
 
-module.exports={Component:require("./intertext"), getStyle:getOldTextStyle ,getHandleCaption:getHandleCaption} ;
+module.exports={Component:require("./intertext"), getStyle:getStyle ,getHandleCaption:getHandleCaption} ;
 },{"./intertext":"C:\\ksana2015\\node_modules\\ksana-layer-react\\src\\intertext\\intertext.js"}],"C:\\ksana2015\\node_modules\\ksana-layer-react\\src\\intertext\\intertext.js":[function(require,module,exports){
 try {
 	var React=require("react-native");
@@ -708,9 +708,11 @@ var HandleButton=React.createClass({
 		action:PT.func.isRequired
 		,mid:PT.string.isRequired
 		,activated:PT.bool.isRequired
-		,editable:PT.bool.isRequired
 	}
-	,activatedStyle: update(handleStyle,{$merge:{borderColor:"green"}})
+	,getStyle:function() {
+		handleStyle.borderColor=this.props.activated?"brown":"gray";
+		return handleStyle;
+	}
 	,getInitialState:function() {
 		return {style:{}};
 	}
@@ -724,7 +726,7 @@ var HandleButton=React.createClass({
 		this.props.action("enter",this.props.mid);
 	}
 	,render:function(){
-		return E("span",{style:this.props.activated?this.activatedStyle:handleStyle,
+		return E("span",{style:this.getStyle(),
 			onMouseEnter:this.onMouseEnter,onMouseLeave:this.onMouseLeave,onClick:this.onClick},
 			this.props.children);
 	}
@@ -739,20 +741,22 @@ var InterText=React.createClass({
 		markup:PT.object.isRequired
 		,mid:PT.string.isRequired
 		,context:PT.object.isRequired
-		,activated:PT.bool
 		,showSuper:PT.bool
 		,styles:PT.object
 		,isHovering:PT.bool
 	}
 	,renderHandle:function() {
-		if (this.props.showSuper) {
-			return E(HandleButton,
-				{action:this.props.context.action,mid:this.props.mid
-				,activated:!!this.props.activated,editable:this.props.editable||false},
-				this.props.markup.caption)
-		};
-	}
+		if (!this.props.showSuper) return;
 
+		var g=this.props.context.hoveringMarkup;
+		if (g) g=g.group;
+		var activated=(this.props.context.hovering===this.props.mid || (g && g===this.props.markup.group));
+
+		return E(HandleButton,
+				{action:this.props.context.action,mid:this.props.mid
+				,activated:activated},
+				this.props.markup.caption);
+	}
 	,getTextStyle:function() {
 		var style={};
 		if (this.props.isHovering) {
@@ -926,12 +930,17 @@ var createMarkupSelector=function(start,context,markups) {
 	return {s:start,l:0,before:selector};
 }
 
-
-var markup2tag=function(markups,context) {
-	var gbo=markuputil.groupByOffset(markups);
+var inSameGroup=function(group,markups){
+	if (!group) return;
+	for (var i in markups) {
+		if (markups[i].group===group) return i;
+	}
+}
+var markup2tag=function(allmarkups,context) {
+	var gbo=markuputil.groupByOffset(allmarkups);
 	defaultActiveMarkups(gbo,context.markupActivated);
 	var out=[];
-	var createTag=function(mid,showSuper) {
+	var createTag=function(markups,mid,showSuper) {
 			var m=markups[mid], cls=cls||m.type;
 			var Component=typedef[m.type].Component;
 			var getStyle=typedef[m.type].getStyle||function(){return {}};
@@ -952,16 +961,20 @@ var markup2tag=function(markups,context) {
 		var hovering=markups[context.hovering]?context.hovering:null; //this group has hovering markup
 		var editing=markups[context.editing]?context.editing:null;    //this group has editing markup
 		var markupcount=Object.keys(markups).length;
-		var showSuper=true;
-		if (!context.editing && markupcount>1 && allDisabled(markups,context.markupActivated )) {
+		var showSuper=true, grouphovering=false;
+		if (context.hovering && !hovering) {
+			grouphovering=inSameGroup(allmarkups[context.hovering].group,markups);	
+		}
+		
+		if (!grouphovering&&!context.editing && markupcount>1 && allDisabled(markups,context.markupActivated )) {
 			showSuper=false;
 			out.push(createMarkupSelector(start,context,markups));
 		}
-		if (editing||hovering) {
-			out.push(createTag(editing||hovering,showSuper));
+		if (editing||hovering||grouphovering) {
+			out.push(createTag(markups,editing||hovering||grouphovering,showSuper));
 		} else {
 			for (var mid in markups) {
-				out.push(createTag(mid, showSuper && (context.markupActivated[mid]||markupcount===1)));
+				out.push(createTag(markups,mid, showSuper && (context.markupActivated[mid]||markupcount===1)));
 			}
 		}
 	}
