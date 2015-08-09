@@ -3,7 +3,7 @@ var KsanaLayerReact=require("ksana-layer-react");
 var FlattenView=KsanaLayerReact.FlattenView;
 var SelectableView=KsanaLayerReact.SelectableView;
 var InterlineView=KsanaLayerReact.InterlineView;
-var MultiLinkView=KsanaLayerReact.MultiLinkView;
+
 var intertextdata=require("./intertextdata");
 var text="道可道非常道。名可名非常名。"; //need extra space for revision at 12
 
@@ -64,7 +64,11 @@ var maincomponent = React.createClass({
     markups[mid]= {s:this.start,l:this.seltext.length,type:"rev",t:"",author:"y1"};
     this.setState({editing:mid});
   }
+  ,onClickTag:function(mid) {
+    console.log("click",mid);
+  }
   ,onDoneEdit:function(mid) {
+    console.log("doneedit",mid);
     var m=markups[mid];
     if (m.t==="" && m.l===0) {
       delete markups[mid];
@@ -78,22 +82,24 @@ var maincomponent = React.createClass({
     }
     e.preventDefault();
   }
+  ,onHover:function(mid,previous) {
+    console.log(mid,previous);
+  }
   ,render: function() {
     return <div style={{fontSize:"200%"}}>
 
     <div>MultiLinkView</div>
-    <InterlineView text={intertextdata.text} markups={intertextdata.links} styles={intertextdata.tagStyles}/>
-
-   <div>SelectableView<Selector action={this.action}/></div>
-      <SelectableView text={text} selectable="multiple" styles={tagStyles} />
-      <SelectableView text={text} selectable={this.state.selectable} tags={tags2} styles={tagStyles} />
+    <InterlineView selections={intertextdata.selections}
+      onClickTag={this.onClickTag}
+      onHover={this.onHover}
+       text={intertextdata.text} markups={intertextdata.links} styles={intertextdata.tagStyles}/>
+      
 
     <div>InterlineView</div>
       <InterlineView user="y1" onSelectText={this.onSelectText} selectable="single"
         onDoneEdit={this.onDoneEdit}
         allowKeys={[" "]} onKeyPress={this.onKeyPress} editing={this.state.editing}
         text={text} markups={markups} styles={tagStyles} />
-        
      </div>;
   }
 });
@@ -102,5 +108,12 @@ module.exports=maincomponent;
     <div>FlattenView<br/>
       <FlattenView text={text} tags={tags} styles={tagStyles} />
     </div>
+
+   <div>SelectableView<Selector action={this.action}/></div>
+      <SelectableView text={text} selectable="multiple" styles={tagStyles} />
+      <SelectableView text={text} selectable={this.state.selectable} tags={tags2} styles={tagStyles} />
+
+
+
 */
 
